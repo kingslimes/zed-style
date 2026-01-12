@@ -98,7 +98,7 @@ function serializeNested(
 
 export class NextStyle {
     private rules = new Map< string, string >()
-    constructor( private prefix = "zed" ) {}
+    constructor( private prefix = "next" ) {}
     css = ( style: NextStyleProperties ): string => {
         const hash = createHashName( JSON.stringify(style) )
         const className = `${ this.prefix }_${ hash }`

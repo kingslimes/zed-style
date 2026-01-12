@@ -25,13 +25,13 @@ NextStyle focuses on **runtime flexibility**, **type safety**, and **minimal abs
 Install the package along with its peer dependencies:
 
 ```bash
-npm install zed-style postcss autoprefixer react
+npm install next-style postcss autoprefixer react
 ```
 
 or with Bun:
 
 ```bash
-bun add zed-style postcss autoprefixer react
+bun add next-style postcss autoprefixer react
 ```
 
 ---
@@ -39,9 +39,9 @@ bun add zed-style postcss autoprefixer react
 ## Basic Usage
 
 ```tsx
-import { NextStyle } from "zed-style"
+import { NextStyle } from "next-style"
 
-const style = new NextStyle()
+const style = new NextStyle('home') // output className = home_{hash} default "next_{hash}"
 
 const className = style.css({
     display: "flex",
@@ -49,11 +49,9 @@ const className = style.css({
     padding: "12px",
     backgroundColor: "#111",
     color: "white",
-
     _hover: {
         backgroundColor: "#222"
     },
-
     _md: {
         padding: "16px"
     }
@@ -69,7 +67,6 @@ export default function App() {
             <div className={className}>
                 Hello NextStyle
             </div>
-
             <style.Provider />
         </>
     )
@@ -167,7 +164,7 @@ Important notes:
 Class names are generated using a deterministic hash based on the style object:
 
 ```text
-zed_x9k3a2m1
+next_x9k3a2m1
 ```
 
 This ensures:
