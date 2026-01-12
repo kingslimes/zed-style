@@ -2,21 +2,21 @@ import postcss from "postcss"
 import autoprefixer from "autoprefixer"
 import type { Properties } from "csstype"
 
-export type ZedStyleProperties = {
+export type NextStyleProperties = {
     [ K in keyof Properties< string | number > ]?: Properties< string | number >[K]
 } & {
-    _hover?: ZedStyleObject
-    _focus?: ZedStyleObject
-    _active?: ZedStyleObject
-    _sm?: ZedStyleObject
-    _md?: ZedStyleObject
-    _lg?: ZedStyleObject
-    _xl?: ZedStyleObject
-    _xxl?: ZedStyleObject
+    _hover?: NextStyleObject
+    _focus?: NextStyleObject
+    _active?: NextStyleObject
+    _sm?: NextStyleObject
+    _md?: NextStyleObject
+    _lg?: NextStyleObject
+    _xl?: NextStyleObject
+    _xxl?: NextStyleObject
 }
 
-type ZedStyleObject = Omit<
-    ZedStyleProperties,
+type NextStyleObject = Omit<
+    NextStyleProperties,
     "_sm" | "_md" | "_lg" | "_xl" | "_xxl"
 >
 
@@ -62,13 +62,13 @@ type MediaKey = keyof typeof MEDIA_MAP
 type SerializeContext = { selector: string, media?: string }
 
 function serializeNested(
-    style: ZedStyleProperties,
+    style: NextStyleProperties,
     ctx: SerializeContext
 ): string {
     let css = ""
     let base = ""
     for ( const key in style ) {
-        const value = style[ key as keyof ZedStyleProperties ]
+        const value = style[ key as keyof NextStyleProperties ]
         if ( value == null || typeof value === "object" || key.startsWith("_") ) continue
         base += `${ toKebabCase(key) }:${ value };`
     }
@@ -96,10 +96,10 @@ function serializeNested(
     return css
 }
 
-export class ZedStyle {
+export class NextStyle {
     private rules = new Map< string, string >()
     constructor( private prefix = "zed" ) {}
-    css = ( style: ZedStyleProperties ): string => {
+    css = ( style: NextStyleProperties ): string => {
         const hash = createHashName( JSON.stringify(style) )
         const className = `${ this.prefix }_${ hash }`
         if ( !this.rules.has(className) ) {
