@@ -3,7 +3,9 @@
 **next-style** is a lightweight runtime CSS-in-JS engine designed for React, Next.js, and Bun.
 
 It is intentionally designed to be **page-scoped and component-scoped**, ensuring predictable
-style isolation with zero global leakage between pages.
+style isolation with zero global leakage between pages or routes.
+
+The library is framework-agnostic at its core and does not depend on React internally.
 
 ---
 
@@ -13,11 +15,12 @@ style isolation with zero global leakage between pages.
 - No global singleton style registry
 - No cross-page or cross-route CSS leakage
 - Each page owns its own styles
-- Explicit style injection via `StyleProvider`
+- Explicit style injection via a `<style>` tag
+- No implicit DOM side effects
 
 Because of this design:
 - `new NextStyle()` must be created inside the page or component scope
-- `StyleProvider` must be rendered **on every page where styles are used**
+- Styles must be injected manually using `ns.StyleText`
 
 ---
 
@@ -27,12 +30,12 @@ Because of this design:
 - Deterministic hashing (same styles always produce the same class name)
 - Nested pseudo selectors (`_hover`, `_focus`, `_active`)
 - Built-in responsive media queries
-- Global styles (page-scoped)
+- Page-scoped global styles
 - `@keyframes` support
 - `@font-face` support
 - PostCSS + Autoprefixer integration
-- Automatic rule deduplication (within a page)
-- Single `<style>` injection per page
+- Automatic rule deduplication (per instance)
+- Single `<style>` injection per page or component
 - No side effects (`sideEffects: false`)
 
 ---
@@ -82,17 +85,17 @@ You may optionally provide a **custom prefix** to control generated class names.
 import { NextStyle } from "next-style"
 
 export default function Page() {
-    const style = new NextStyle("home")
-    const button = style.css({
+    const ns = new NextStyle("home")
+    const btn = ns.css({
         padding: "8px 16px",
         backgroundColor: "black",
         color: "white",
-        borderRadius: 6
+        borderRadius: "6px"
     })
     return (
         <>
-            <style.StyleProvider />
-            <button className={ button }>Click me</button>
+            <style>{ ns.StyleText }</style>
+            <button className={ btn }>Click me</button>
         </>
     )
 }
@@ -106,24 +109,9 @@ home_ab12cd3
 
 Notes:
 - The prefix is optional
-- If omitted, the default prefix is used
+- If omitted, a default prefix is used
 - Prefixes help identify styles per page or component
 - Each page or component should create its own `NextStyle` instance
-
-
-## Why StyleProvider Is Required Per Page
-
-`next-style` does not use a global style registry.
-
-Each `NextStyle` instance:
-- Collects styles locally
-- Injects a single `<style>` tag
-- Is destroyed when the page/component unmounts
-
-This ensures:
-- No stale CSS after route changes
-- No style conflicts between pages
-- Predictable SSR and CSR behavior
 
 ---
 
@@ -132,7 +120,7 @@ This ensures:
 Pseudo selectors are defined using keys prefixed with `_`.
 
 ```ts
-const card = style.css({
+const card = ns.css({
     backgroundColor: "#fff",
     transition: "0.2s ease",
     _hover: {
@@ -162,7 +150,7 @@ Built-in breakpoints:
 - `_xxl` → min-width: 1536px
 
 ```ts
-const box = style.css({
+const box = ns.css({
     width: 100,
     _md: {
         width: 200
@@ -179,16 +167,16 @@ Media queries can be nested and are automatically merged.
 
 ## Global Styles (Page Scoped)
 
-Global styles are **scoped to the current page**.
+Global styles are scoped to the current page or component instance.
 
 ```ts
-style.global("body", {
+ns.global("body", {
     margin: 0,
     fontFamily: "Inter, sans-serif"
 })
 ```
 
-These styles are removed automatically when the page unmounts.
+These styles exist only for the lifetime of the page or component.
 
 ---
 
@@ -197,14 +185,16 @@ These styles are removed automatically when the page unmounts.
 Create animations using `keyframes()`:
 
 ```ts
-const fadeIn = style.keyframes({
+const fadeIn = ns.keyframes({
     from: { opacity: 0 },
     to: { opacity: 1 }
 })
 ```
 
+Use the animation in styles:
+
 ```ts
-const modal = style.css({
+const modal = ns.css({
     animation: `${ fadeIn } 0.3s ease-out`
 })
 ```
@@ -218,7 +208,7 @@ Keyframes are scoped to the current `NextStyle` instance.
 Declare fonts using `fontFace()`:
 
 ```ts
-style.fontFace({
+ns.fontFace({
     fontFamily: "Inter",
     src: "url(/fonts/inter.woff2) format('woff2')",
     fontWeight: 400,
@@ -227,7 +217,7 @@ style.fontFace({
 })
 ```
 
-Font-face rules are injected only for the current page.
+Font-face rules are injected only for the current page or component.
 
 ---
 
@@ -240,17 +230,45 @@ Font-face rules are injected only for the current page.
 
 ---
 
-## Performance
+## Server-Side Rendering (SSR)
 
-- CSS rules are generated and injected only once per page
+`next-style` is SSR-safe.
+
+Because the core API only generates strings:
+- No JSX is exported from the library
+- No React runtime is required
+- No side effects occur during render
+
+You can safely inject styles during SSR:
+
+```tsx
+<style>{ ns.StyleText }</style>
+```
+
+The same output will be produced on both the server and the client.
+
+---
+
+## Performance Characteristics
+
+- CSS rules are generated and deduplicated per instance
 - PostCSS and Autoprefixer results are cached
-- One `<style>` tag per page
-- No global runtime mutation
+- Only one `<style>` tag is required per page or component
+- No global runtime mutations
 
 Ideal for:
 - Next.js App Router
 - Page-level isolation
 - Component-driven design systems
+
+---
+
+## Common Gotchas
+
+- Do not create a shared `NextStyle` instance across pages
+- Do not treat `next-style` as a global style manager
+- Always inject `ns.StyleText` before elements that use generated class names
+- Avoid calling `ns.css()` conditionally with different order between renders
 
 ---
 
@@ -275,8 +293,8 @@ https://github.com/kingslimes/next-style/issues
 - `&` selector nesting
 - `_dark` / `_light` helpers
 - `@layer` support
-- SSR collection utilities
-- Framework adapters (Solid, Preact)
+- Optional React helpers
+- Dev-time warnings for incorrect usage
 
 ---
 

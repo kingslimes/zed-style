@@ -206,12 +206,12 @@ export class NextStyle {
         }
     }
 
-    StyleProvider = () => {
+    get StyleText() {
         if ( this.rules.size === 0 ) return null
         let cssText = ""
         for ( const rule of this.rules.values() ) {
             cssText += rule + "\n"
         }
-        return <style>{ cssText }</style>
+        return cssText
     }
 }
