@@ -196,7 +196,7 @@ export class NextStyle {
     /**
      * Apply default global CSS reset
      */
-    globalReset = (): void => {
+    resetBrowserStyle = (): void => {
         this.global( "html,body", {
             maxWidth: "100vw",
             overflowX: "hidden"
