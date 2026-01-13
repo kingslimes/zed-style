@@ -41,21 +41,18 @@ type FontFaceObject = {
 /**
  * PostCSS processor with autoprefixer
  */
-const processor = postcss( [
-    autoprefixer( {
+const processor = postcss([
+    autoprefixer({
         overrideBrowserslist: [
             ">0.2%",
             "not dead",
             "not op_mini all"
         ]
-    } )
-] )
+    })
+])
 
 const postcssCache = new Map< string, string >()
 
-/**
- * Transform raw CSS using PostCSS with caching
- */
 function postcssTransform( cssText: string ): string {
     const cached = postcssCache.get( cssText )
     if ( cached ) return cached
@@ -110,9 +107,6 @@ type SerializeContext = {
     media?: string
 }
 
-/**
- * Merge nested media queries
- */
 function mergeMedia( parent?: string, current?: string ): string | undefined {
     if ( !parent ) return current
     if ( !current ) return parent
@@ -131,19 +125,25 @@ function serializeNested( style: NextStyleProperties, ctx: SerializeContext ): s
         declarations.push( `${ toKebabCase( key ) }:${ value }` )
     }
     if ( declarations.length ) {
-        const rule = `${ ctx.selector }{ ${ declarations.join( "; " ) } }`
-        css += ctx.media ? `@media ${ ctx.media }{ ${ rule } }` : rule
+        const rule = `${ ctx.selector }{${ declarations.join( ";" ) }}`
+        css += ctx.media ? `@media ${ ctx.media }{${ rule }}` : rule
     }
     for ( const pseudo of [ "_hover", "_focus", "_active" ] as const ) {
         const value = style[ pseudo ]
         if ( !value ) continue
-        css += serializeNested( value, { selector: `${ ctx.selector }:${ pseudo.slice( 1 ) }`, media: ctx.media } )
+        css += serializeNested( value, {
+            selector: `${ ctx.selector }:${ pseudo.slice( 1 ) }`,
+            media: ctx.media
+        })
     }
     for ( const key in MEDIA_MAP ) {
         const mediaKey = key as MediaKey
         const value = style[ mediaKey ]
         if ( !value ) continue
-        css += serializeNested( value, { selector: ctx.selector, media: mergeMedia( ctx.media, MEDIA_MAP[ mediaKey ] ) } )
+        css += serializeNested( value, {
+            selector: ctx.selector,
+            media: mergeMedia( ctx.media, MEDIA_MAP[ mediaKey ] )
+        })
     }
     return css
 }
@@ -152,7 +152,11 @@ type PseudoState = "hover" | "focus" | "active"
 type Combinator = "+" | ">" | "~" | " "
 
 class RelationBuilder {
-    constructor( private ns: NextStyle, private source: string, private pseudo?: PseudoState ) {}
+    constructor(
+        private ns: NextStyle,
+        private source: string,
+        private pseudo?: PseudoState
+    ) {}
     hover() { return new RelationBuilder( this.ns, this.source, "hover" ) }
     focus() { return new RelationBuilder( this.ns, this.source, "focus" ) }
     active() { return new RelationBuilder( this.ns, this.source, "active" ) }
@@ -171,8 +175,14 @@ class RelationBuilder {
  * NextStyle runtime CSS-in-JS engine
  */
 export class NextStyle {
+
     private rules = new Map< string, string >()
+
+    /** store merged global style objects */
+    private globalStore = new Map< string, NextStyleProperties >()
+
     constructor( private prefix = "next" ) {}
+
     css = ( style: NextStyleProperties ): string => {
         const seed = stableStringify( style )
         const hash = createHashName( seed )
@@ -185,16 +195,26 @@ export class NextStyle {
         }
         return className
     }
+
+    /**
+     * Global style with property-level merge
+     */
     global = ( selector: string, style: NextStyleProperties ): void => {
         const key = `global:${ selector }`
-        if ( !this.rules.has( key ) ) {
-            const raw = serializeNested( style, { selector } )
-            const cssText = postcssTransform( raw )
-            this.rules.set( key, cssText )
+        const prev = this.globalStore.get( key ) ?? {}
+        const merged: NextStyleProperties = {
+            ...prev,
+            ...style
         }
+        this.globalStore.set( key, merged )
+        const raw = serializeNested( merged, { selector } )
+        const cssText = postcssTransform( raw )
+        if ( this.rules.has( key ) ) this.rules.delete( key )
+        this.rules.set( key, cssText )
     }
+
     /**
-     * Apply default global CSS reset
+     * Apply default browser reset styles
      */
     resetBrowserStyle = (): void => {
         this.global( "html,body", {
@@ -218,9 +238,9 @@ export class NextStyle {
             textDecoration: "none"
         })
     }
-    when = ( source: string ) => {
-        return new RelationBuilder( this, source )
-    }
+
+    when = ( source: string ) => new RelationBuilder( this, source )
+
     keyframes = ( frames: KeyframesObject ): string => {
         const seed = stableStringify( frames )
         const hash = createHashName( seed )
@@ -234,13 +254,14 @@ export class NextStyle {
                 for ( const prop in frame ) {
                     declarations.push( `${ toKebabCase( prop ) }:${ frame[ prop as keyof typeof frame ] }` )
                 }
-                body += `${ step }{ ${ declarations.join( "; " ) } }`
+                body += `${ step }{ ${ declarations.join( ";" ) } }`
             }
             const cssText = postcssTransform( `@keyframes ${ name }{ ${ body } }` )
             this.rules.set( key, cssText )
         }
         return name
     }
+
     fontFace = ( font: FontFaceObject ): void => {
         const seed = stableStringify( font )
         const hash = createHashName( seed )
@@ -250,17 +271,24 @@ export class NextStyle {
             for ( const prop in font ) {
                 declarations.push( `${ toKebabCase( prop ) }:${ ( font as any )[ prop ] }` )
             }
-            const cssText = postcssTransform( `@font-face{ ${ declarations.join( "; " ) } }` )
+            const cssText = postcssTransform(
+                `@font-face{ ${ declarations.join( ";" ) } }`
+            )
             this.rules.set( key, cssText )
         }
     }
+
     toTextCss = (): string | null => {
         if ( this.rules.size === 0 ) return null
         let cssText = ""
         for ( const rule of this.rules.values() ) cssText += rule + "\n"
         return cssText
     }
-    StyleProvider = (): DetailedReactHTMLElement< { children: string }, HTMLStyleElement > | null => {
+
+    StyleProvider = (): DetailedReactHTMLElement<
+        { children: string },
+        HTMLStyleElement
+    > | null => {
         if ( this.rules.size === 0 ) return null
         let cssText = ""
         for ( const rule of this.rules.values() ) cssText += rule + "\n"
