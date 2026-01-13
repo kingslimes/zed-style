@@ -78,11 +78,11 @@ function toKebabCase( prop: string ) {
 }
 
 const MEDIA_MAP = {
-    _sm: "( min-width: 640px )",
-    _md: "( min-width: 768px )",
-    _lg: "( min-width: 1024px )",
-    _xl: "( min-width: 1280px )",
-    _xxl: "( min-width: 1536px )"
+    _sm: "(min-width:640px)",
+    _md: "(min-width:768px)",
+    _lg: "(min-width:1024px)",
+    _xl: "(min-width:1280px)",
+    _xxl: "(min-width:1536px)"
 } as const
 
 type MediaKey = keyof typeof MEDIA_MAP
