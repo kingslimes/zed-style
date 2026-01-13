@@ -4,8 +4,12 @@ import autoprefixer from "autoprefixer"
 import type { Properties } from "csstype"
 import type { DetailedReactHTMLElement } from "react"
 
+/* =========================
+ * Types
+ * ========================= */
+
 export type NextStyleProperties = {
-    [ K in keyof Properties< string | number > ]?: Properties< string | number >[K]
+    [K in keyof Properties<string | number>]?: Properties<string | number>[K]
 } & {
     _hover?: NextStyleObject
     _focus?: NextStyleObject
@@ -23,7 +27,7 @@ type NextStyleObject = Omit<
 >
 
 type KeyframesObject = {
-    [ step: string ]: Properties< string | number >
+    [step: string]: Properties<string | number>
 }
 
 type FontFaceObject = {
@@ -35,6 +39,10 @@ type FontFaceObject = {
     unicodeRange?: string
 }
 
+/* =========================
+ * PostCSS
+ * ========================= */
+
 const processor = postcss([
     autoprefixer({
         overrideBrowserslist: [
@@ -45,39 +53,47 @@ const processor = postcss([
     })
 ])
 
-const postcssCache = new Map< string, string >()
+const postcssCache = new Map<string, string>()
 
-function postcssTransform( cssText: string ): string {
-    const cached = postcssCache.get( cssText )
-    if ( cached ) return cached
-    const result = processor.process( cssText, { from: undefined }).css
-    postcssCache.set( cssText, result )
+function postcssTransform(cssText: string): string {
+    const cached = postcssCache.get(cssText)
+    if (cached) return cached
+    const result = processor.process(cssText, { from: undefined }).css
+    postcssCache.set(cssText, result)
     return result
 }
 
-function stableStringify( value: any ): string {
-    if ( value == null || typeof value !== "object" ) return JSON.stringify( value )
-    if ( Array.isArray( value ) ) return `[${ value.map( stableStringify ).join(",") }]`
-    const keys = Object.keys( value ).sort()
-    return `{${ keys.map(
-        k => `"${ k }":${ stableStringify( value[k] ) }`
-    ).join(",") }}`
+/* =========================
+ * Utils
+ * ========================= */
+
+function stableStringify(value: any): string {
+    if (value == null || typeof value !== "object") return JSON.stringify(value)
+    if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`
+    const keys = Object.keys(value).sort()
+    return `{${keys.map(
+        k => `"${k}":${stableStringify(value[k])}`
+    ).join(",")}}`
 }
 
-function createHashName( seed: string ) {
+function createHashName(seed: string) {
     let hash = BigInt("0xcbf29ce484222325")
     const prime = BigInt("0x100000001b3")
-    for ( let i = 0; i < seed.length; i++ ) {
-        hash ^= BigInt( seed.charCodeAt(i) )
+    for (let i = 0; i < seed.length; i++) {
+        hash ^= BigInt(seed.charCodeAt(i))
         hash *= prime
         hash &= BigInt("0xffffffffffffffff")
     }
-    return hash.toString(36).slice( 0, 9 )
+    return hash.toString(36).slice(0, 9)
 }
 
-function toKebabCase( prop: string ) {
-    return prop.replace( /[A-Z]/g, m => `-${ m.toLowerCase() }` )
+function toKebabCase(prop: string) {
+    return prop.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)
 }
+
+/* =========================
+ * Media
+ * ========================= */
 
 const MEDIA_MAP = {
     _sm: "(min-width:640px)",
@@ -94,11 +110,15 @@ type SerializeContext = {
     media?: string
 }
 
-function mergeMedia( parent?: string, current?: string ) {
-    if ( !parent ) return current
-    if ( !current ) return parent
-    return `${ parent } and ${ current }`
+function mergeMedia(parent?: string, current?: string) {
+    if (!parent) return current
+    if (!current) return parent
+    return `${parent} and ${current}`
 }
+
+/* =========================
+ * Serializer
+ * ========================= */
 
 function serializeNested(
     style: NextStyleProperties,
@@ -106,125 +126,240 @@ function serializeNested(
 ): string {
     let css = ""
     let base = ""
-    for ( const key in style ) {
-        const value = style[ key as keyof NextStyleProperties ]
-        if ( value == null || typeof value === "object" || key.startsWith("_") ) continue
-        base += `${ toKebabCase( key ) }:${ value };`
+
+    for (const key in style) {
+        const value = style[key as keyof NextStyleProperties]
+        if (value == null || typeof value === "object" || key.startsWith("_")) continue
+        base += `${toKebabCase(key)}:${value};`
     }
-    if ( base ) {
-        const rule = `${ ctx.selector }{${ base }}`
-        css += ctx.media ? `@media ${ ctx.media }{${ rule }}` : rule
+
+    if (base) {
+        const rule = `${ctx.selector}{${base}}`
+        css += ctx.media ? `@media ${ctx.media}{${rule}}` : rule
     }
-    for ( const pseudo of [ "_hover", "_focus", "_active" ] as const ) {
-        const value = style[ pseudo ]
-        if ( !value ) continue
-        css += serializeNested( value, {
-            selector: `${ ctx.selector }:${ pseudo.slice(1) }`,
+
+    for (const pseudo of ["_hover", "_focus", "_active"] as const) {
+        const value = style[pseudo]
+        if (!value) continue
+        css += serializeNested(value, {
+            selector: `${ctx.selector}:${pseudo.slice(1)}`,
             media: ctx.media
         })
     }
-    for ( const key in MEDIA_MAP ) {
+
+    for (const key in MEDIA_MAP) {
         const mediaKey = key as MediaKey
-        const value = style[ mediaKey ]
-        if ( !value ) continue
-        css += serializeNested( value, {
+        const value = style[mediaKey]
+        if (!value) continue
+        css += serializeNested(value, {
             selector: ctx.selector,
-            media: mergeMedia( ctx.media, MEDIA_MAP[ mediaKey ] )
+            media: mergeMedia(ctx.media, MEDIA_MAP[mediaKey])
         })
     }
+
     return css
 }
 
+/* =========================
+ * Relation API (NEW)
+ * ========================= */
+
+type PseudoState = "hover" | "focus" | "active"
+type Combinator = "+" | ">" | "~" | " "
+
+class RelationBuilder {
+    constructor(
+        private ns: NextStyle,
+        private source: string,
+        private pseudo?: PseudoState
+    ) {}
+
+    /** :hover */
+    hover() {
+        return new RelationBuilder(this.ns, this.source, "hover")
+    }
+
+    /** :focus */
+    focus() {
+        return new RelationBuilder(this.ns, this.source, "focus")
+    }
+
+    /** :active */
+    active() {
+        return new RelationBuilder(this.ns, this.source, "active")
+    }
+
+    /**
+     * Adjacent sibling selector
+     *
+     * CSS:
+     * div:hover + p
+     *
+     * @example
+     * when(div).hover().adjacent(p, { color: "red" })
+     */
+    adjacent(target: string, style: NextStyleProperties) {
+        this.emit("+", target, style)
+    }
+
+    /**
+     * Child selector
+     *
+     * CSS:
+     * div:hover > p
+     *
+     * @example
+     * when(div).hover().child(p, { color: "red" })
+     */
+    child(target: string, style: NextStyleProperties) {
+        this.emit(">", target, style)
+    }
+
+    /**
+     * General sibling selector
+     *
+     * CSS:
+     * div:hover ~ p
+     *
+     * @example
+     * when(div).hover().sibling(p, { color: "red" })
+     */
+    sibling(target: string, style: NextStyleProperties) {
+        this.emit("~", target, style)
+    }
+
+    /**
+     * Descendant selector
+     *
+     * CSS:
+     * div:hover p
+     *
+     * @example
+     * when(div).hover().descendant(p, { color: "red" })
+     */
+    descendant(target: string, style: NextStyleProperties) {
+        this.emit(" ", target, style)
+    }
+
+    private emit(
+        combinator: Combinator,
+        target: string,
+        style: NextStyleProperties
+    ) {
+        const pseudo = this.pseudo ? `:${this.pseudo}` : ""
+        const selector =
+            `.${this.source}${pseudo}${combinator}.${target}`
+        this.ns.global(selector, style)
+    }
+}
+
+/* =========================
+ * Main Class
+ * ========================= */
+
 export class NextStyle {
 
-    private rules = new Map< string, string >()
+    private rules = new Map<string, string>()
 
     constructor(
         private prefix = "next"
     ) {}
 
-    css = ( style: NextStyleProperties ): string => {
-        const seed = stableStringify( style )
-        const hash = createHashName( seed )
-        const className = `${ this.prefix }_${ hash }`
-        const key = `class:${ className }`
-        if ( !this.rules.has( key ) ) {
-            const raw = serializeNested( style, {
-                selector: `.${ className }`
+    css = (style: NextStyleProperties): string => {
+        const seed = stableStringify(style)
+        const hash = createHashName(seed)
+        const className = `${this.prefix}_${hash}`
+        const key = `class:${className}`
+
+        if (!this.rules.has(key)) {
+            const raw = serializeNested(style, {
+                selector: `.${className}`
             })
-            const cssText = postcssTransform( raw )
-            this.rules.set( key, cssText )
+            const cssText = postcssTransform(raw)
+            this.rules.set(key, cssText)
         }
+
         return className
     }
 
-    global = ( selector: string, style: NextStyleProperties ) => {
-        const key = `global:${ selector }`
-        if ( !this.rules.has( key ) ) {
-            const raw = serializeNested( style, {
-                selector
-            })
-            const cssText = postcssTransform( raw )
-            this.rules.set( key, cssText )
+    global = (selector: string, style: NextStyleProperties) => {
+        const key = `global:${selector}`
+        if (!this.rules.has(key)) {
+            const raw = serializeNested(style, { selector })
+            const cssText = postcssTransform(raw)
+            this.rules.set(key, cssText)
         }
     }
 
-    keyframes = ( frames: KeyframesObject ): string => {
-        const seed = stableStringify( frames )
-        const hash = createHashName( seed )
-        const name = `${ this.prefix }_${ hash }`
-        const key = `@keyframes:${ name }`
-        if ( !this.rules.has( key ) ) {
+    /**
+     * Relation selector API
+     *
+     * @example
+     * when(container).hover().sibling(text)
+     */
+    when = (source: string) => {
+        return new RelationBuilder(this, source)
+    }
+
+    keyframes = (frames: KeyframesObject): string => {
+        const seed = stableStringify(frames)
+        const hash = createHashName(seed)
+        const name = `${this.prefix}_${hash}`
+        const key = `@keyframes:${name}`
+
+        if (!this.rules.has(key)) {
             let body = ""
-            for ( const step in frames ) {
+            for (const step in frames) {
                 let props = ""
-                const frame = frames[ step ]
-                for ( const prop in frame ) {
-                    props += `${ toKebabCase( prop ) }:${ frame[ prop as keyof typeof frame ] };`
+                const frame = frames[step]
+                for (const prop in frame) {
+                    props += `${toKebabCase(prop)}:${frame[prop as keyof typeof frame]};`
                 }
-                body += `${ step }{${ props }}`
+                body += `${step}{${props}}`
             }
             const cssText = postcssTransform(
-                `@keyframes ${ name }{${ body }}`
+                `@keyframes ${name}{${body}}`
             )
-            this.rules.set( key, cssText )
+            this.rules.set(key, cssText)
         }
+
         return name
     }
 
-    fontFace = ( font: FontFaceObject ) => {
-        const seed = stableStringify( font )
-        const hash = createHashName( seed )
-        const key = `@font-face:${ hash }`
-        if ( !this.rules.has( key ) ) {
+    fontFace = (font: FontFaceObject) => {
+        const seed = stableStringify(font)
+        const hash = createHashName(seed)
+        const key = `@font-face:${hash}`
+
+        if (!this.rules.has(key)) {
             let body = ""
-            for ( const prop in font ) {
-                body += `${ toKebabCase( prop ) }:${ (font as any)[ prop ] };`
+            for (const prop in font) {
+                body += `${toKebabCase(prop)}:${(font as any)[prop]};`
             }
             const cssText = postcssTransform(
-                `@font-face{${ body }}`
+                `@font-face{${body}}`
             )
-            this.rules.set( key, cssText )
+            this.rules.set(key, cssText)
         }
     }
 
     toTextCss = () => {
-        if ( this.rules.size === 0 ) return null
+        if (this.rules.size === 0) return null
         let cssText = ""
-        for ( const rule of this.rules.values() ) {
+        for (const rule of this.rules.values()) {
             cssText += rule + "\n"
         }
         return cssText
     }
 
     StyleProvider = (): DetailedReactHTMLElement<{
-            children: string;
-        }, HTMLStyleElement> | null => {
-        if ( this.rules.size === 0 ) return null
+        children: string;
+    }, HTMLStyleElement> | null => {
+        if (this.rules.size === 0) return null
         let cssText = ""
-        for ( const rule of this.rules.values() ) {
+        for (const rule of this.rules.values()) {
             cssText += rule + "\n"
         }
-        return createElement( "style", { children: cssText })
+        return createElement("style", { children: cssText })
     }
 }
