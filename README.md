@@ -38,11 +38,11 @@ Designed for **page-scoped and component-scoped usage** without build-time tooli
 
 ## Installation
 
-''' bash
+``` bash
 npm install next-style
 # or
 bun add next-style
-'''
+```
 
 ---
 
@@ -50,11 +50,11 @@ bun add next-style
 
 NextStyle relies on the following peer dependencies:
 
-''' txt
+``` txt
 react >= 18
 postcss ^8
 autoprefixer ^10
-'''
+```
 
 Make sure they are installed in your project.
 
@@ -64,9 +64,9 @@ Make sure they are installed in your project.
 
 The **recommended and official pattern** is to scope styles per page or per component using destructuring.
 
-''' ts
+``` ts
 const { css, StyleProvider } = new NextStyle("home")
-'''
+```
 
 Why this works well:
 - Clear scope ownership
@@ -78,7 +78,7 @@ Why this works well:
 
 ## Basic Example (Page Scoped)
 
-''' tsx
+``` tsx
 import { NextStyle } from "next-style"
 
 export default function HomePage() {
@@ -109,7 +109,7 @@ export default function HomePage() {
         </>
     )
 }
-'''
+```
 
 ---
 
@@ -119,12 +119,12 @@ export default function HomePage() {
 
 Creates a class name from a style object.
 
-''' ts
+``` ts
 const className = css({
     color: "red",
     fontSize: "16px"
 })
-'''
+```
 
 - Automatically converts camelCase → kebab-case
 - Deduplicates styles using hashing
@@ -144,14 +144,14 @@ Supported pseudo keys:
 
 Example:
 
-''' ts
+``` ts
 css({
     color: "black",
     _hover: {
         color: "red"
     }
 })
-'''
+```
 
 ---
 
@@ -169,14 +169,14 @@ Built-in breakpoints:
 
 Example:
 
-''' ts
+``` ts
 css({
     fontSize: "14px",
     _lg: {
         fontSize: "18px"
     }
 })
-'''
+```
 
 Media queries can be nested and merged automatically.
 
@@ -188,7 +188,7 @@ Media queries can be nested and merged automatically.
 
 Apply styles globally without generating a class.
 
-''' ts
+``` ts
 const { global, StyleProvider } = new NextStyle("global")
 
 global("body", {
@@ -202,7 +202,7 @@ global("a", {
         textDecoration: "underline"
     }
 })
-'''
+```
 
 ---
 
@@ -212,7 +212,7 @@ global("a", {
 
 Creates a `@keyframes` rule and returns its name.
 
-''' ts
+``` ts
 const fadeIn = keyframes({
     from: { opacity: 0 },
     to: { opacity: 1 }
@@ -221,7 +221,7 @@ const fadeIn = keyframes({
 css({
     animation: `${fadeIn} 300ms ease-in`
 })
-'''
+```
 
 ---
 
@@ -231,7 +231,7 @@ css({
 
 Registers a `@font-face` rule.
 
-''' ts
+``` ts
 fontFace({
     fontFamily: "MyFont",
     src: "url(/fonts/myfont.woff2)",
@@ -239,7 +239,7 @@ fontFace({
     fontStyle: "normal",
     fontDisplay: "swap"
 })
-'''
+```
 
 ---
 
@@ -249,12 +249,12 @@ fontFace({
 
 Injects all generated CSS into a `<style>` tag.
 
-''' tsx
+``` tsx
 <>
     <StyleProvider />
     <App />
 </>
-'''
+```
 
 - Returns `null` if no styles exist
 - Should be rendered **once per scope**
@@ -270,9 +270,9 @@ Useful for:
 - Manual injection
 - Debugging
 
-''' ts
+``` ts
 const cssText = toTextCss()
-'''
+```
 
 ---
 
@@ -280,7 +280,7 @@ const cssText = toTextCss()
 
 Reusable, self-contained component.
 
-''' tsx
+``` tsx
 import { NextStyle } from "next-style"
 
 export function Card({ title, children }) {
@@ -309,7 +309,7 @@ export function Card({ title, children }) {
         </>
     )
 }
-'''
+```
 
 ---
 
