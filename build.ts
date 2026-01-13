@@ -1,25 +1,20 @@
-import fs from "fs";
-import path from "path";
-import babel from "@babel/core";
+import { build } from "bun"
 
-const input = "src/index.tsx";
-const output = "builder/dist/index.jsx";
-
-const source = fs.readFileSync(input, "utf8");
-fs.mkdirSync(path.dirname(output), { recursive: true });
-
-const result = await babel.transformAsync(source, {
-    filename: input,
-    presets: [
-        ["@babel/preset-typescript", {
-            allExtensions: true,
-            isTSX: true
-        }]
+await build({
+    entrypoints: ["./src/index.ts"],
+    outdir: "./builder/dist",
+    format: "esm",
+    sourcemap: "none",
+    minify: {
+        syntax: true,
+        keepNames: true,
+        whitespace: true,
+        identifiers: false
+    },
+    splitting: false,
+    external: [
+        "csstype",
+        "postcss",
+        "autoprefixer"
     ]
-});
-
-if (!result?.code) {
-    throw new Error("Babel transform failed");
-}
-
-fs.writeFileSync(output, result.code);
+})

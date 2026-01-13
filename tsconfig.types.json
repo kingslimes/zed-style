@@ -1,24 +1,10 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    /* ให้ emit เฉพาะ type */
-    "noEmit": false,
     "emitDeclarationOnly": true,
     "declaration": true,
-
-    /* output */
     "outDir": "builder/dist",
-
-    /* JSX ต้อง preserve เพราะ runtime เป็น JSX */
-    "jsx": "preserve",
-
-    /* ปิด bundler-only options ที่ TS ไม่อนุญาต */
-    "allowImportingTsExtensions": false,
-    "moduleResolution": "node",
-    "verbatimModuleSyntax": false,
-
-    /* runtime ไม่เกี่ยว */
-    "allowJs": false
+    "moduleResolution": "bundler"
   },
   "include": ["src"]
 }

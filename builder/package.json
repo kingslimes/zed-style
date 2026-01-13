@@ -1,6 +1,6 @@
 {
 	"name": "next-style",
-	"version": "1.1.2",
+	"version": "1.1.3",
 	"description": "Lightweight runtime CSS-in-JS engine with nested pseudo selectors, media queries, global styles, keyframes, and font-face support.",
 	"author": {
 		"name": "kingslimes",
@@ -16,11 +16,11 @@
 		"LICENSE",
 		"README.md"
 	],
-	"main": "./dist/index.jsx",
+	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
-			"import": "./dist/index.jsx",
+			"import": "./dist/index.js",
 			"types": "./dist/index.d.ts"
 		}
 	},
@@ -52,7 +52,6 @@
 		"font-face"
 	],
 	"peerDependencies": {
-        "react": ">=18",
 		"postcss": "^8",
 		"autoprefixer": "^10"
 	},
@@ -60,7 +59,9 @@
         "csstype": "latest"
 	},
 	"engines": {
-		"bun": ">=1.0.0",
 		"node": ">=18"
+	},
+	"publishConfig": {
+		"access": "public"
 	}
 }
