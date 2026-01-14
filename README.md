@@ -9,7 +9,7 @@ Designed for **page-scoped and component-scoped usage** without build-time tooli
 ## Package Information
 
 - **Name:** next-style
-- **Version:** 1.1.5
+- **Version:** 1.2.1
 - **License:** MIT
 - **Author:** kingslimes  
   https://github.com/kingslimes
@@ -114,6 +114,29 @@ export default function HomePage() {
 ---
 
 ## Styling API
+
+### `resetStyle(): this as NextStyle`
+
+Reset default style
+
+``` ts
+const { css, ... } = new NextStyle().resetStyle()
+```
+or
+``` ts
+const { resetStyle } = new NextStyle()
+resetStyle()
+```
+
+### `root(style): void`
+
+Create root style from a style object.
+
+``` ts
+root({
+    "--color-base": "#fff"
+})
+```
 
 ### `css(style): string`
 
