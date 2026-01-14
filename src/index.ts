@@ -24,7 +24,9 @@ import type { DetailedReactHTMLElement } from "react"
  * ```
  */
 export type NextStyleProperties = {
-    [ K in keyof Properties< string | number > ]?: Properties< string | number >[ K ]
+    [ K in keyof Properties< string | number > ]?: Properties< string | number >[K]
+} & {
+    [ customProperty: `--${string}` ]?: string | number
 } & {
     _hover?: NextStyleObject
     _focus?: NextStyleObject
@@ -361,6 +363,27 @@ export class NextStyle {
         const cssText = postcssTransform( raw )
         if ( this.rules.has( key ) ) this.rules.delete( key )
         this.rules.set( key, cssText )
+    }
+
+    /**
+     * Define styles on `:root`.
+     *
+     * Intended for:
+     * - CSS variables
+     * - Global theme tokens
+     *
+     * Styles are merged at property level.
+     *
+     * Example:
+     * ```ts
+     * root({
+     *   "--color-primary": "#4f46e5",
+     *   "--radius": "12px"
+     * })
+     * ```
+     */
+    root = ( style: NextStyleProperties ): void => {
+        this.global( ":root", style )
     }
 
     /**
